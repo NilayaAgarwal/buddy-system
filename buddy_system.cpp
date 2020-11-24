@@ -193,3 +193,17 @@ int main()
   
     return 0; 
 } 
+
+/*
+Output for the above code:
+
+Memory from 0 to 15 allocated
+Memory from 16 to 31 allocated
+Memory from 32 to 47 allocated
+Memory from 48 to 63 allocated
+Memory block from 0 to 15 freed
+Sorry, invalid free request
+Memory block from 32 to 47 freed
+Memory block from 16 to 31 freed
+Coalescing of blocks starting at 0 and 16 was done
+*/
