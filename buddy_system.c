@@ -1,167 +1,195 @@
-#include <stdlib.h>
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-
-struct buddy2 {
-  unsigned size;
-  unsigned longest[1]; 
-};
-
-#define LEFT_LEAF(index) ((index) * 2 + 1)
-#define RIGHT_LEAF(index) ((index) * 2 + 2)
-#define PARENT(index) ( ((index) + 1) / 2 - 1)
-
-#define IS_POWER_OF_2(x) (!((x)&((x)-1)))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-#define ALLOC malloc
-#define FREE free
-static unsigned fixsize(unsigned size) {
-  size |= size >> 1;
-  size |= size >> 2;
-  size |= size >> 4;
-  size |= size >> 8;
-  size |= size >> 16;
-  return size+1;
-}
-
-struct buddy2* buddy2_new( int size ) {
-  struct buddy2* self;
-  unsigned node_size;
-  int i;
-
-  if (size < 1 || !IS_POWER_OF_2(size))
-    return NULL;
-
-  self = (struct buddy2*)ALLOC( 2 * size * sizeof(unsigned));
-  self->size = size;
-  node_size = size * 2;
-
-  for (i = 0; i < 2 * size - 1; ++i) {
-    if (IS_POWER_OF_2(i+1))
-      node_size /= 2;
-    self->longest[i] = node_size;
-  }
-  return self;
-}
-
-void buddy2_destroy( struct buddy2* self) {
-  FREE(self);
-}
-
-int buddy2_alloc(struct buddy2* self, int size) {
-  unsigned index = 0;
-  unsigned node_size;
-  unsigned offset = 0;
-
-  if (self==NULL)
-    return -1;
-
-  if (size <= 0)
-    size = 1;
-  else if (!IS_POWER_OF_2(size))
-    size = fixsize(size);
-
-  if (self->longest[index] < size)
-    return -1;
-
-  for(node_size = self->size; node_size != size; node_size /= 2 ) {
-    if (self->longest[LEFT_LEAF(index)] >= size)
-      index = LEFT_LEAF(index);
+#include<bits/stdc++.h> 
+using namespace std; 
+  
+// Size of vector of pairs 
+int size;  
+  
+// Global vector of pairs to track all the free nodes of various sizes  
+vector<pair<int, int>> arr[100000]; 
+  
+// Map used as hash map to store the starting address as key and size  of allocated segment key as value 
+map<int, int> mp; 
+  
+void Buddy(int s)  
+{ 
+      
+    // Maximum number of powers of 2 possible 
+    int n = ceil(log(s) / log(2));  
+      
+    size = n + 1; 
+    for(int i = 0; i <= n; i++) 
+        arr[i].clear(); 
+  
+    // Initially whole block of specified size is available 
+    arr[n].push_back(make_pair(0, s - 1));  
+} 
+  
+void allocate(int s) 
+{ 
+      
+    // Calculate index in free list to search for block if available 
+    int x = ceil(log(s) / log(2));  
+      
+    // Block available 
+    if (arr[x].size() > 0)  
+    { 
+        pair<int, int> temp = arr[x][0];  
+  
+        // Remove block from free list 
+        arr[x].erase(arr[x].begin());  
+          
+        cout << "Memory from " << temp.first 
+             << " to " << temp.second  
+             << " allocated" << "\n"; 
+  
+        // Map starting address with size to make deallocating easy 
+        mp[temp.first] = temp.second -  
+                         temp.first + 1;  
+    } 
     else
-      index = RIGHT_LEAF(index);
-  }
-
-  self->longest[index] = 0;
-  offset = (index + 1) * node_size - self->size;
-
-  while (index) {
-    index = PARENT(index);
-    self->longest[index] = 
-      MAX(self->longest[LEFT_LEAF(index)], self->longest[RIGHT_LEAF(index)]);
-  }
-
-  return offset;
-}
-
-void buddy2_free(struct buddy2* self, int offset) {
-  unsigned node_size, index = 0;
-  unsigned left_longest, right_longest;
-
-  assert(self && offset >= 0 && offset < self->size);
-
-  node_size = 1;
-  index = offset + self->size - 1;
-
-  for (; self->longest[index] ; index = PARENT(index)) {
-    node_size *= 2;
-    if (index == 0)
-      return;
-  }
-
-  self->longest[index] = node_size;
-
-  while (index) {
-    index = PARENT(index);
-    node_size *= 2;
-
-    left_longest = self->longest[LEFT_LEAF(index)];
-    right_longest = self->longest[RIGHT_LEAF(index)];
-    
-    if (left_longest + right_longest == node_size) 
-      self->longest[index] = node_size;
+    { 
+        int i; 
+          
+        // If not, search for a larger block  
+        for(i = x + 1; i < size; i++) 
+        { 
+              
+            // Find block size greater than request 
+            if (arr[i].size() != 0)  
+                break; 
+        } 
+  
+        // If no such block is found i.e., no memory block available 
+        if (i == size)  
+        { 
+            cout << "Sorry, failed to allocate memory\n"; 
+        } 
+          
+        // If found 
+        else 
+        { 
+            pair<int, int> temp; 
+            temp = arr[i][0]; 
+  
+            // Remove first block to split it into halves 
+            arr[i].erase(arr[i].begin());  
+            i--; 
+              
+            for(;i >= x; i--)  
+            { 
+                  
+                // Divide block into two halves 
+                pair<int, int> pair1, pair2;  
+                pair1 = make_pair(temp.first,  
+                                  temp.first + 
+                                 (temp.second - 
+                                  temp.first) / 2); 
+                pair2 = make_pair(temp.first +  
+                                 (temp.second -  
+                                  temp.first + 1) / 2, 
+                                  temp.second); 
+                                   
+                arr[i].push_back(pair1); 
+  
+                // Push them in free list 
+                arr[i].push_back(pair2);  
+                temp = arr[i][0]; 
+  
+                // Remove first free block to further split 
+                arr[i].erase(arr[i].begin());  
+            } 
+              
+            cout << "Memory from " << temp.first 
+                 << " to " << temp.second  
+                 << " allocate" << "\n"; 
+                   
+            mp[temp.first] = temp.second -  
+                             temp.first + 1; 
+        } 
+    } 
+} 
+  
+void deallocate(int id) 
+{ 
+      
+    // If no such starting address available 
+    if(mp.find(id) == mp.end())  
+    { 
+        cout << "Sorry, invalid free request\n"; 
+        return; 
+    } 
+      
+    // Size of block to be searched 
+    int n = ceil(log(mp[id]) / log(2));  
+      
+    int i, buddyNumber, buddyAddress; 
+  
+    // Add the block in free list 
+    arr[n].push_back(make_pair(id,  
+                               id + pow(2, n) - 1));  
+    cout << "Memory block from " << id  
+         << " to "<< id + pow(2, n) - 1 
+         << " freed\n"; 
+  
+    // Calculate buddy number 
+    buddyNumber = id / mp[id];  
+  
+    if (buddyNumber % 2 != 0) 
+        buddyAddress = id - pow(2, n); 
     else
-      self->longest[index] = MAX(left_longest, right_longest);
-  }
-}
-
-int buddy2_size(struct buddy2* self, int offset) {
-  unsigned node_size, index = 0;
-
-  assert(self && offset >= 0 && offset < self->size);
-
-  node_size = 1;
-  for (index = offset + self->size - 1; self->longest[index] ; index = PARENT(index))
-    node_size *= 2;
-
-  return node_size;
-}
-
-void buddy2_dump(struct buddy2* self) {
-  char canvas[65];
-  int i,j;
-  unsigned node_size, offset;
-
-  if (self == NULL) {
-    printf("buddy2_dump: (struct buddy2*)self == NULL");
-    return;
-  }
-
-  if (self->size > 64) {
-    printf("buddy2_dump: (struct buddy2*)self is too big to dump");
-    return;
-  }
-
-  memset(canvas,'_', sizeof(canvas));
-  node_size = self->size * 2;
-
-  for (i = 0; i < 2 * self->size - 1; ++i) {
-    if ( IS_POWER_OF_2(i+1) )
-      node_size /= 2;
-
-    if ( self->longest[i] == 0 ) {
-      if (i >=  self->size - 1) {
-        canvas[i - self->size + 1] = '*';
-      }
-      else if (self->longest[LEFT_LEAF(i)] && self->longest[RIGHT_LEAF(i)]) {
-        offset = (i+1) * node_size - self->size;
-
-        for (j = offset; j < offset + node_size; ++j)
-          canvas[j] = '*';
-      }
-    }
-  }
-  canvas[self->size] = '\0';
-  puts(canvas);
-}
+        buddyAddress = id + pow(2, n); 
+          
+    // Search in free list to find it's buddy 
+    for(i = 0; i < arr[n].size(); i++)  
+    { 
+          
+        // If buddy found and is also free 
+        if (arr[n][i].first == buddyAddress)  
+        { 
+              
+            // Now merge the buddies to make them one large free memory block 
+            if (buddyNumber % 2 == 0) 
+            { 
+                arr[n + 1].push_back(make_pair(id, 
+                   id + 2 * (pow(2, n) - 1))); 
+                     
+                cout << "Coalescing of blocks starting at "
+                     << id << " and " << buddyAddress 
+                     << " was done" << "\n"; 
+            } 
+            else
+            { 
+                arr[n + 1].push_back(make_pair( 
+                    buddyAddress, buddyAddress + 
+                    2 * (pow(2, n)))); 
+                      
+                cout << "Coalescing of blocks starting at "
+                     << buddyAddress << " and "
+                     << id << " was done" << "\n"; 
+            } 
+            arr[n].erase(arr[n].begin() + i); 
+            arr[n].erase(arr[n].begin() +  
+            arr[n].size() - 1); 
+            break; 
+        } 
+    } 
+  
+    // Remove the key existence from map 
+    mp.erase(id);  
+} 
+  
+// Driver code 
+int main() 
+{     
+    Buddy(128); 
+    allocate(16);  
+    allocate(16);  
+    allocate(16);  
+    allocate(16);  
+    deallocate(0);  
+    deallocate(9);  
+    deallocate(32);  
+    deallocate(16);  
+  
+    return 0; 
+} 
