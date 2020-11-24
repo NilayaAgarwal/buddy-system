@@ -17,7 +17,6 @@ struct buddy2 {
 
 #define ALLOC malloc
 #define FREE free
-
 static unsigned fixsize(unsigned size) {
   size |= size >> 1;
   size |= size >> 2;
